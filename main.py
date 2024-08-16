@@ -17,12 +17,6 @@ class LibraryManagementSystem:
     def clear(self):
         os.system('cls' if os.name == 'nt' else 'clear')
 
-    def save_data(self):
-        print("Data saving not required for SQL integration.")
-    
-    def load_data(self):
-        print("Data loading not required for SQL integration.")
-
     def main_menu(self):
         self.clear()
         while True:
