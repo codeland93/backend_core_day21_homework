@@ -1,9 +1,10 @@
+
 import mysql.connector
 from mysql.connector import Error
 
 # Function to connect to the database
 def connect_db():
-    db_name = 'lms'
+    db_name = 'lm'
     user = 'root'
     password = 'juhki903'
     host = '127.0.0.1'
@@ -79,10 +80,10 @@ class LibraryManagementSystem:
         except Error as e:
             print(f"Error: {e}")
 
-    # Borrowed books management (Placeholder method)
+    # Borrowed books management
     def borrowed_books(self):
         try:
-            query = "SELECT * FROM borrowed_books"  # Example query, adjust based on your schema
+            query = "SELECT * FROM borrowed_books"
             self.cursor.execute(query)
             result = self.cursor.fetchall()
             for row in result:
@@ -90,28 +91,19 @@ class LibraryManagementSystem:
         except Error as e:
             print(f"Error: {e}")
 
-    # Customer management
-    def customer_add(self, name, email):
+    # User management
+    def user_add(self, name, library_id):
         try:
-            query = "INSERT INTO customers (name, email) VALUES (%s, %s)"
-            self.cursor.execute(query, (name, email))
+            query = "INSERT INTO users (name, library_id) VALUES (%s, %s)"
+            self.cursor.execute(query, (name, library_id))
             self.connection.commit()
-            print("Customer added successfully!")
+            print("User added successfully!")
         except Error as e:
             print(f"Error: {e}")
 
-    def customer_delete(self, customer_id):
+    def user_fetch(self):
         try:
-            query = "DELETE FROM customers WHERE id = %s"
-            self.cursor.execute(query, (customer_id,))
-            self.connection.commit()
-            print("Customer deleted successfully!")
-        except Error as e:
-            print(f"Error: {e}")
-
-    def customer_fetch(self):
-        try:
-            query = "SELECT * FROM customers"
+            query = "SELECT * FROM users"
             self.cursor.execute(query)
             result = self.cursor.fetchall()
             for row in result:
@@ -119,19 +111,10 @@ class LibraryManagementSystem:
         except Error as e:
             print(f"Error: {e}")
 
-    def customer_update(self, customer_id, name=None, email=None):
+    def user_update(self, user_id, name=None, library_id=None):
         try:
-            query = "UPDATE customers SET name = %s, email = %s WHERE id = %s"
-            self.cursor.execute(query, (name, email, customer_id))
-            self.connection.commit()
-            print("Customer updated successfully!")
-        except Error as e:
-            print(f"Error: {e}")
-
-    def user_update(self, user_id, username=None, password=None):
-        try:
-            query = "UPDATE users SET username = %s, password = %s WHERE id = %s"
-            self.cursor.execute(query, (username, password, user_id))
+            query = "UPDATE users SET name = %s, library_id = %s WHERE id = %s"
+            self.cursor.execute(query, (name, library_id, user_id))
             self.connection.commit()
             print("User updated successfully!")
         except Error as e:
@@ -144,7 +127,7 @@ if db_connection:
     # Example usage of methods
     library_system.author_add("J.K. Rowling")
     library_system.book_fetch()
-    library_system.customer_add("John Doe", "john.doe@example.com")
+    library_system.user_add("John Doe", "1234567890")
     # Add more method calls as needed
 else:
     print("Failed to connect to the database.")

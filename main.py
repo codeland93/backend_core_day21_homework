@@ -1,340 +1,366 @@
-import os
-from db_connection import connect_db, Error
-from customer_add import add_customer
-from customer_fetch import fetch_all_customers, fetch_customer
-from author_add import add_author
-from author_fetch import fetch_all_authors, fetch_author
-from book_update import update_book
-from user_update import update_user
-from author_update import update_author
+import mysql.connector
+from mysql.connector import Error
 
+# Function to connect to the database
+def connect_db():
+    db_name = 'lm'
+    user = 'root'
+    password = 'juhki903'
+    host = '127.0.0.1'
+
+    try:
+        conn = mysql.connector.connect(
+            database=db_name,
+            user=user,
+            password=password,
+            host=host
+        )
+
+        if conn.is_connected():
+            print("Connection to MySQL database successful!")
+            return conn
+
+    except Error as e:
+        print(f"Error: {e}")
+        return None
+
+# Class to manage library system operations
 class LibraryManagementSystem:
-    def __init__(self):
-        self.db_connection = connect_db()
-        if self.db_connection:
-            self.cursor = self.db_connection.cursor()
+    def __init__(self, connection):
+        self.connection = connection
+        self.cursor = self.connection.cursor()
 
-    def clear(self):
-        os.system('cls' if os.name == 'nt' else 'clear')
-
-    def main_menu(self):
-        self.clear()
-        while True:
-            action = input('''
-Welcome to the Library Management System with Database Integration!
-****
-Main Menu:
-1. Book Operations
-2. User Operations
-3. Author Operations
-4. Customer Menu                      
-5. Quit
-''')
-
-            if action == '1':
-                self.book_operations()
-            elif action == '2':
-                self.user_operations()
-            elif action == '3':
-                self.author_operations()
-            elif action == '4':
-                self.customer_menu()
-            elif action == '5':
-                if self.db_connection:
-                    self.db_connection.close()
-                break
-
-    def book_operations(self):
-        while True:
-            print("\nBook Operations:")
-            print("1. Add a new book")
-            print("2. Borrow a book")
-            print("3. Return a book")
-            print("4. Search for a book")
-            print("5. Display all books")
-            print("6. Update book details")
-            print("7. Back to Main Menu")
-            choice = input("Enter your choice: ")
-
-            if choice == '1':
-                self.add_book()
-            elif choice == '2':
-                self.borrow_book()
-            elif choice == '3':
-                self.return_book()
-            elif choice == '4':
-                self.search_book()
-            elif choice == '5':
-                self.display_all_books()
-            elif choice == '6':
-                self.update_book()
-            elif choice == '7':
-                break
-
-    def verify_author_id(self, author_id):
+    # Author management
+    def author_add(self, name, biography=''):
         try:
-            query = "SELECT author_id FROM authors WHERE author_id = %s"
-            self.cursor.execute(query, (author_id,))
-            result = self.cursor.fetchone()
-            return result is not None
-        except Error as e:
-            print(f"Error: {e}")
-            return False
-
-    def add_book(self):
-        title = input("Enter book title: ")
-        author_id = input("Enter author ID: ")
-        isbn = input("Enter ISBN number: ")
-        publication_date = input("Enter publication date (YYYY-MM-DD): ")
-
-        if not self.verify_author_id(author_id):
-            print("Error: The provided author ID does not exist.")
-            return
-
-        try:
-            query = 'INSERT INTO books (title, author_id, isbn, publication_date) VALUES (%s, %s, %s, %s)'
-            self.cursor.execute(query, (title, author_id, isbn, publication_date))
-            self.db_connection.commit()
-            print("Book added successfully!")
-        except Error as e:
-            print(f"Error: {e}")
-
-    def borrow_book(self):
-        isbn = input("Enter ISBN number of the book to borrow: ")
-
-        try:
-            query = 'DELETE FROM books WHERE isbn = %s'
-            self.cursor.execute(query, (isbn,))
-            self.db_connection.commit()
-            if self.cursor.rowcount > 0:
-                print("Book borrowed successfully!")
-            else:
-                print("Book not found!")
-        except Error as e:
-            print(f"Error: {e}")
-
-    def return_book(self):
-        title = input("Enter book title: ")
-        author_id = input("Enter author ID: ")
-        isbn = input("Enter ISBN number: ")
-
-        if not self.verify_author_id(author_id):
-            print("Error: The provided author ID does not exist.")
-            return
-
-        try:
-            query = 'INSERT INTO books (title, author_id, isbn) VALUES (%s, %s, %s)'
-            self.cursor.execute(query, (title, author_id, isbn))
-            self.db_connection.commit()
-            print("Book returned successfully!")
-        except Error as e:
-            print(f"Error: {e}")
-
-    def search_book(self):
-        search_term = input("Enter book title or author: ")
-
-        try:
-            query = '''
-                SELECT books.title, authors.name, books.isbn
-                FROM books
-                JOIN authors ON books.author_id = authors.author_id
-                WHERE books.title LIKE %s OR authors.name LIKE %s
-            '''
-            self.cursor.execute(query, (f'%{search_term}%', f'%{search_term}%'))
-            results = self.cursor.fetchall()
-            
-            if results:
-                for book in results:
-                    print(f"Title: {book[0]}, Author: {book[1]}, ISBN: {book[2]}")
-            else:
-                print("No books found!")
-        except Error as e:
-            print(f"Error: {e}")
-
-    def display_all_books(self):
-        try:
-            query = '''
-                SELECT books.title, authors.name, books.isbn
-                FROM books
-                JOIN authors ON books.author_id = authors.author_id
-            '''
-            self.cursor.execute(query)
-            results = self.cursor.fetchall()
-            
-            if results:
-                for book in results:
-                    print(f"Title: {book[0]}, Author: {book[1]}, ISBN: {book[2]}")
-            else:
-                print("No books available!")
-        except Error as e:
-            print(f"Error: {e}")
-
-    def update_book(self):
-        update_book()
-
-    def user_operations(self):
-        while True:
-            print("\nUser Operations:")
-            print("1. Add a new user")
-            print("2. View user details")
-            print("3. Display all users")
-            print("4. Update user details")
-            print("5. Back to Main Menu")
-            choice = input("Enter your choice: ")
-
-            if choice == '1':
-                self.add_user()
-            elif choice == '2':
-                self.view_user_details()
-            elif choice == '3':
-                self.display_all_users()
-            elif choice == '4':
-                self.update_user()
-            elif choice == '5':
-                break
-
-    def add_user(self):
-        name = input("Enter user name: ")
-        library_id = input("Enter library ID: ")
-
-        try:
-            query = 'INSERT INTO users (name, library_id) VALUES (%s, %s)'
-            self.cursor.execute(query, (name, library_id))
-            self.db_connection.commit()
-            print("User added successfully!")
-        except Error as e:
-            print(f"Error: {e}")
-
-    def view_user_details(self):
-        library_id = input("Enter library ID to view details: ")
-
-        try:
-            query = "SELECT * FROM users WHERE library_id = %s"
-            self.cursor.execute(query, (library_id,))
-            user = self.cursor.fetchone()
-            
-            if user:
-                print(f"Name: {user[1]}, Library ID: {user[2]}")
-            else:
-                print("User not found!")
-        except Error as e:
-            print(f"Error: {e}")
-
-    def display_all_users(self):
-        try:
-            query = "SELECT * FROM users"
-            self.cursor.execute(query)
-            results = self.cursor.fetchall()
-            
-            if results:
-                for user in results:
-                    print(f"Name: {user[1]}, Library ID: {user[2]}")
-            else:
-                print("No users available!")
-        except Error as e:
-            print(f"Error: {e}")
-
-    def update_user(self):
-        update_user()
-
-    def author_operations(self):
-        while True:
-            print("\nAuthor Operations:")
-            print("1. Add a new author")
-            print("2. View author details")
-            print("3. Display all authors")
-            print("4. Update author details")
-            print("5. Back to Main Menu")
-            choice = input("Enter your choice: ")
-
-            if choice == '1':
-                self.add_author()
-            elif choice == '2':
-                self.view_author_details()
-            elif choice == '3':
-                self.display_all_authors()
-            elif choice == '4':
-                self.update_author()
-            elif choice == '5':
-                break
-
-    def add_author(self):
-        name = input("Enter author name: ")
-        birth_year = input("Enter birth year: ")
-
-        try:
-            query = 'INSERT INTO authors (name, birth_year) VALUES (%s, %s)'
-            self.cursor.execute(query, (name, birth_year))
-            self.db_connection.commit()
+            query = "INSERT INTO authors (name, biography) VALUES (%s, %s)"
+            self.cursor.execute(query, (name, biography))
+            self.connection.commit()
             print("Author added successfully!")
         except Error as e:
             print(f"Error: {e}")
 
-    def view_author_details(self):
-        author_id = input("Enter author ID to view details: ")
-
-        try:
-            query = "SELECT * FROM authors WHERE author_id = %s"
-            self.cursor.execute(query, (author_id,))
-            author = self.cursor.fetchone()
-            
-            if author:
-                print(f"Name: {author[1]}, Birth Year: {author[2]}, Author ID: {author[0]}")
-            else:
-                print("Author not found!")
-        except Error as e:
-            print(f"Error: {e}")
-
-    def display_all_authors(self):
+    def author_fetch(self):
         try:
             query = "SELECT * FROM authors"
             self.cursor.execute(query)
-            results = self.cursor.fetchall()
-            
-            if results:
-                for author in results:
-                    print(f"Name: {author[1]}, Birth Year: {author[2]}, Author ID: {author[0]}")
-            else:
-                print("No authors available!")
+            result = self.cursor.fetchall()
+            for row in result:
+                print(row)
         except Error as e:
             print(f"Error: {e}")
 
-    def update_author(self):
-        update_author()
+    def author_update(self, author_id, name=None, biography=None):
+        try:
+            query = "UPDATE authors SET name = COALESCE(%s, name), biography = COALESCE(%s, biography) WHERE id = %s"
+            self.cursor.execute(query, (name, biography, author_id))
+            self.connection.commit()
+            print("Author updated successfully!")
+        except Error as e:
+            print(f"Error: {e}")
 
-    def customer_menu(self):
-        while True:
-            print("\nCustomer Menu:")
-            print("1. Add a customer")
-            print("2. View customer details")
-            print("3. Display all customers")
-            print("4. Update customer details")
-            print("5. Back to Main Menu")
-            choice = input("Enter your choice: ")
+    def author_delete(self, author_id):
+        try:
+            query = "DELETE FROM authors WHERE id = %s"
+            self.cursor.execute(query, (author_id,))
+            self.connection.commit()
+            print("Author deleted successfully!")
+        except Error as e:
+            print(f"Error: {e}")
 
-            if choice == '1':
-                self.add_customer()
-            elif choice == '2':
-                self.view_customer()
-            elif choice == '3':
-                self.display_all_customers()
-            elif choice == '4':
-                self.update_customer()
-            elif choice == '5':
-                break
+    # Book management
+    def book_add(self, title, author_id, isbn, publication_date=None, availability=True):
+        try:
+            # Check if author exists
+            self.cursor.execute("SELECT id FROM authors WHERE id = %s", (author_id,))
+            if not self.cursor.fetchone():
+                print("Error: Author ID does not exist.")
+                return
 
-    def add_customer(self):
-        add_customer()
+            query = "INSERT INTO books (title, author_id, isbn, publication_date, availability) VALUES (%s, %s, %s, %s, %s)"
+            self.cursor.execute(query, (title, author_id, isbn, publication_date, availability))
+            self.connection.commit()
+            print("Book added successfully!")
+        except Error as e:
+            print(f"Error: {e}")
 
-    def view_customer(self):
-        fetch_customer()
+    def book_fetch(self):
+        try:
+            query = "SELECT * FROM books"
+            self.cursor.execute(query)
+            result = self.cursor.fetchall()
+            for row in result:
+                print(row)
+        except Error as e:
+            print(f"Error: {e}")
 
-    def display_all_customers(self):
-        fetch_all_customers()
+    def book_update(self, book_id, title=None, author_id=None, isbn=None, publication_date=None, availability=None):
+        try:
+            # Check if book exists
+            self.cursor.execute("SELECT id FROM books WHERE id = %s", (book_id,))
+            if not self.cursor.fetchone():
+                print("Error: Book ID does not exist.")
+                return
 
-def update_customer(self):
-    update_customer() 
+            # Check if author exists if author_id is provided
+            if author_id is not None:
+                self.cursor.execute("SELECT id FROM authors WHERE id = %s", (author_id,))
+                if not self.cursor.fetchone():
+                    print("Error: Author ID does not exist.")
+                    return
+
+            query = "UPDATE books SET title = COALESCE(%s, title), author_id = COALESCE(%s, author_id), isbn = COALESCE(%s, isbn), publication_date = COALESCE(%s, publication_date), availability = COALESCE(%s, availability) WHERE id = %s"
+            self.cursor.execute(query, (title, author_id, isbn, publication_date, availability, book_id))
+            self.connection.commit()
+            print("Book updated successfully!")
+        except Error as e:
+            print(f"Error: {e}")
+
+    def book_delete(self, book_id):
+        try:
+            query = "DELETE FROM books WHERE id = %s"
+            self.cursor.execute(query, (book_id,))
+            self.connection.commit()
+            print("Book deleted successfully!")
+        except Error as e:
+            print(f"Error: {e}")
+
+    # User management
+    def user_add(self, name, library_id):
+        try:
+            query = "INSERT INTO users (name, library_id) VALUES (%s, %s)"
+            self.cursor.execute(query, (name, library_id))
+            self.connection.commit()
+            print("User added successfully!")
+        except Error as e:
+            print(f"Error: {e}")
+
+    def user_fetch(self):
+        try:
+            query = "SELECT * FROM users"
+            self.cursor.execute(query)
+            result = self.cursor.fetchall()
+            for row in result:
+                print(row)
+        except Error as e:
+            print(f"Error: {e}")
+
+    def user_update(self, user_id, name=None, library_id=None):
+        try:
+            query = "UPDATE users SET name = COALESCE(%s, name), library_id = COALESCE(%s, library_id) WHERE id = %s"
+            self.cursor.execute(query, (name, library_id, user_id))
+            self.connection.commit()
+            print("User updated successfully!")
+        except Error as e:
+            print(f"Error: {e}")
+
+    def user_delete(self, user_id):
+        try:
+            query = "DELETE FROM users WHERE id = %s"
+            self.cursor.execute(query, (user_id,))
+            self.connection.commit()
+            print("User deleted successfully!")
+        except Error as e:
+            print(f"Error: {e}")
+
+    # Borrowed books management
+    def borrowed_books_add(self, user_id, book_id, borrow_date, return_date=None):
+        try:
+            # Check if user and book exist
+            self.cursor.execute("SELECT id FROM users WHERE id = %s", (user_id,))
+            if not self.cursor.fetchone():
+                print("Error: User ID does not exist.")
+                return
+
+            self.cursor.execute("SELECT id FROM books WHERE id = %s", (book_id,))
+            if not self.cursor.fetchone():
+                print("Error: Book ID does not exist.")
+                return
+
+            query = "INSERT INTO borrowed_books (user_id, book_id, borrow_date, return_date) VALUES (%s, %s, %s, %s)"
+            self.cursor.execute(query, (user_id, book_id, borrow_date, return_date))
+            self.connection.commit()
+            print("Borrowed book entry added successfully!")
+        except Error as e:
+            print(f"Error: {e}")
+
+    def borrowed_books_fetch(self):
+        try:
+            query = "SELECT * FROM borrowed_books"
+            self.cursor.execute(query)
+            result = self.cursor.fetchall()
+            for row in result:
+                print(row)
+        except Error as e:
+            print(f"Error: {e}")
+
+    def borrowed_books_update(self, id, user_id=None, book_id=None, borrow_date=None, return_date=None):
+        try:
+            # Check if borrowed book entry exists
+            self.cursor.execute("SELECT id FROM borrowed_books WHERE id = %s", (id,))
+            if not self.cursor.fetchone():
+                print("Error: Borrowed book ID does not exist.")
+                return
+
+            # Check if user and book exist if user_id or book_id are provided
+            if user_id is not None:
+                self.cursor.execute("SELECT id FROM users WHERE id = %s", (user_id,))
+                if not self.cursor.fetchone():
+                    print("Error: User ID does not exist.")
+                    return
+
+            if book_id is not None:
+                self.cursor.execute("SELECT id FROM books WHERE id = %s", (book_id,))
+                if not self.cursor.fetchone():
+                    print("Error: Book ID does not exist.")
+                    return
+
+            query = "UPDATE borrowed_books SET user_id = COALESCE(%s, user_id), book_id = COALESCE(%s, book_id), borrow_date = COALESCE(%s, borrow_date), return_date = COALESCE(%s, return_date) WHERE id = %s"
+            self.cursor.execute(query, (user_id, book_id, borrow_date, return_date, id))
+            self.connection.commit()
+            print("Borrowed book entry updated successfully!")
+        except Error as e:
+            print(f"Error: {e}")
+
+    def borrowed_books_delete(self, id):
+        try:
+            query = "DELETE FROM borrowed_books WHERE id = %s"
+            self.cursor.execute(query, (id,))
+            self.connection.commit()
+            print("Borrowed book entry deleted successfully!")
+        except Error as e:
+            print(f"Error: {e}")
+
+# Function to display the main menu and handle user input
+def main_menu():
+    conn = connect_db()
+    if conn is None:
+        print("Failed to connect to the database.")
+        return
+
+    lms = LibraryManagementSystem(conn)
+
+    while True:
+        print("\nWelcome to the Library Management System with Database Integration!")
+        print("****")
+        print("Main Menu:")
+        print("1. Book Operations")
+        print("2. User Operations")
+        print("3. Author Operations")
+        print("4. Quit")
+
+        choice = input("Enter your choice: ")
+
+        if choice == '1':
+            while True:
+                print("\nBook Operations:")
+                print("1. Add a new book")
+                print("2. Borrow a book")
+                print("3. Return a book")
+                print("4. Search for a book")
+                print("5. Display all books")
+                print("6. Return to Main Menu")
+
+                book_choice = input("Enter your choice: ")
+
+                if book_choice == '1':
+                    title = input("Enter the book title: ")
+                    author_id = int(input("Enter the author ID: "))
+                    isbn = input("Enter the ISBN: ")
+                    publication_date = input("Enter the publication date (YYYY-MM-DD) or press Enter to skip: ")
+                    publication_date = publication_date if publication_date else None
+                    availability = input("Enter the availability (1 for available, 0 for not available): ")
+                    availability = True if availability == '1' else False
+                    lms.book_add(title, author_id, isbn, publication_date, availability)
+
+                elif book_choice == '2':
+                    user_id = int(input("Enter the user ID: "))
+                    book_id = int(input("Enter the book ID: "))
+                    borrow_date = input("Enter the borrow date (YYYY-MM-DD): ")
+                    lms.borrowed_books_add(user_id, book_id, borrow_date)
+
+                elif book_choice == '3':
+                    borrow_id = int(input("Enter the borrow record ID to update: "))
+                    return_date = input("Enter the return date (YYYY-MM-DD) or press Enter to skip: ")
+                    return_date = return_date if return_date else None
+                    lms.borrowed_books_update(borrow_id, return_date=return_date)
+
+                elif book_choice == '4':
+                    search_term = input("Enter search term for the book (title or ISBN): ")
+                    lms.book_fetch()  # Implement search functionality as needed
+
+                elif book_choice == '5':
+                    lms.book_fetch()
+
+                elif book_choice == '6':
+                    break
+
+                else:
+                    print("Invalid choice. Please try again.")
+
+        elif choice == '2':
+            while True:
+                print("\nUser Operations:")
+                print("1. Add a new user")
+                print("2. View user details")
+                print("3. Display all users")
+                print("4. Return to Main Menu")
+
+                user_choice = input("Enter your choice: ")
+
+                if user_choice == '1':
+                    name = input("Enter the user's name: ")
+                    library_id = input("Enter the library ID: ")
+                    lms.user_add(name, library_id)
+
+                elif user_choice == '2':
+                    user_id = int(input("Enter the user ID to view: "))
+                    lms.user_fetch()  # Implement fetching specific user details as needed
+
+                elif user_choice == '3':
+                    lms.user_fetch()
+
+                elif user_choice == '4':
+                    break
+
+                else:
+                    print("Invalid choice. Please try again.")
+
+        elif choice == '3':
+            while True:
+                print("\nAuthor Operations:")
+                print("1. Add a new author")
+                print("2. View author details")
+                print("3. Display all authors")
+                print("4. Return to Main Menu")
+
+                author_choice = input("Enter your choice: ")
+
+                if author_choice == '1':
+                    name = input("Enter the author's name: ")
+                    biography = input("Enter the author's biography: ")
+                    lms.author_add(name, biography)
+
+                elif author_choice == '2':
+                    author_id = int(input("Enter the author ID to view: "))
+                    lms.author_fetch()  # Implement fetching specific author details as needed
+
+                elif author_choice == '3':
+                    lms.author_fetch()
+
+                elif author_choice == '4':
+                    break
+
+                else:
+                    print("Invalid choice. Please try again.")
+
+        elif choice == '4':
+            print("Exiting the Library Management System. Goodbye!")
+            conn.close()
+            break
+
+        else:
+            print("Invalid choice. Please try again.")
 
 if __name__ == "__main__":
-    lms = LibraryManagementSystem()
-    lms.main_menu()
+    main_menu()
